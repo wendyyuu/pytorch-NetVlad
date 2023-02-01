@@ -3,6 +3,4 @@
 
 # ignore ALL files in ANY directory named temp
 
-/vgg16_netvlad_checkpoint
-
-/vgg16_netvlad_checkpoint
+vgg16_netvlad_checkpoint/
