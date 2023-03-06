@@ -24,6 +24,10 @@ from tensorboardX import SummaryWriter
 import numpy as np
 import netvlad
 
+import pdb
+import warnings
+warnings.filterwarnings("ignore")
+
 parser = argparse.ArgumentParser(description='pytorch-NetVlad')
 parser.add_argument('--mode', type=str, default='train', help='Mode', choices=['train', 'test', 'cluster'])
 parser.add_argument('--batchSize', type=int, default=4, 
@@ -44,8 +48,10 @@ parser.add_argument('--momentum', type=float, default=0.9, help='Momentum for SG
 parser.add_argument('--nocuda', action='store_true', help='Dont use cuda')
 parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
 parser.add_argument('--seed', type=int, default=123, help='Random seed to use.')
-parser.add_argument('--dataPath', type=str, default='/nfs/ibrahimi/data/', help='Path for centroid data.')
-parser.add_argument('--runsPath', type=str, default='/nfs/ibrahimi/runs/', help='Path to save runs to.')
+# parser.add_argument('--dataPath', type=str, default='/nfs/ibrahimi/data/', help='Path for centroid data.')
+parser.add_argument('--dataPath', type=str, default='/media/sdc1/wendyu/ibrahimi/data/', help='Path for centroid data.')
+# parser.add_argument('--runsPath', type=str, default='/nfs/ibrahimi/runs/', help='Path to save runs to.')
+parser.add_argument('--runsPath', type=str, default='/media/sdc1/wendyu/ibrahimi/runs/', help='Path to save runs to.')
 parser.add_argument('--savePath', type=str, default='checkpoints', 
         help='Path to save checkpoints to in logdir. Default=checkpoints/')
 parser.add_argument('--cachePath', type=str, default=environ['TMPDIR'], help='Path to save cache to.')
@@ -67,6 +73,85 @@ parser.add_argument('--margin', type=float, default=0.1, help='Margin for triple
 parser.add_argument('--split', type=str, default='val', help='Data split to use for testing. Default is val', 
         choices=['test', 'test250k', 'train', 'val'])
 parser.add_argument('--fromscratch', action='store_true', help='Train from scratch rather than using pretrained models')
+
+# def get_precision_recall_curve(QUERY_SETS, QUERY_VECTORS, DATABASE_VECTORS, opt, ave_one_percent_recall):
+
+#     y_true = []
+#     y_predicted = []
+
+#     for q in range(len(QUERY_SETS)):
+#         for d in range(len(QUERY_SETS)):
+#             if (q==d):
+#                 continue
+
+#             database_nbrs = KDTree(DATABASE_VECTORS[d])
+
+#             for i in range(len(QUERY_SETS[q])):
+#                 true_neighbors = QUERY_SETS[q][i][d]
+#                 if(len(true_neighbors)==0):
+#                     continue
+#                 distances, indices = database_nbrs.query(np.array([QUERY_VECTORS[q][i]]))
+#                 current_y_true = 0
+#                 current_y_predicted = 0
+#                 for j in range(len(indices[0])):
+#                     if indices[0][j] in true_neighbors:
+#                         # predicted neighbor is correct
+#                         current_y_true = 1
+#                     current_y_predicted_temp = np.dot(QUERY_VECTORS[q][i], DATABASE_VECTORS[d][indices[0][j]]) / \
+#                                                     (np.linalg.norm(QUERY_VECTORS[q][i]) * np.linalg.norm(DATABASE_VECTORS[d][indices[0][j]]))
+#                     # take prediction similarity that is the highest amoung neighbors
+#                     if current_y_predicted_temp > current_y_predicted:
+#                         current_y_predicted = current_y_predicted_temp
+#                 # loop or not
+#                 y_true.append(current_y_true)
+
+#                 # similarity
+#                 y_predicted.append(current_y_predicted)
+        
+#         np.set_printoptions(threshold=sys.maxsize)
+
+#         precision, recall, thresholds = precision_recall_curve(y_true, y_predicted)
+
+#         np.set_printoptions(threshold=1000)
+
+#         np.save(os.path.join(cfg.RESULTS_FOLDER, 'precision.npy'), np.array(precision))
+#         np.save(os.path.join(cfg.RESULTS_FOLDER, 'recall.npy'), np.array(recall))
+
+#     # Plot Precision-recall curve
+#     plt.figure()
+#     if cfg.EVAL_MODEL =='epn_netvlad':
+#         plt.plot(recall, precision, 'b', label='EPN-NetVLAD')
+#     elif cfg.EVAL_MODEL =='atten_epn_netvlad':
+#         plt.plot(recall, precision, 'b', label='EPN-NetVLAD Attentive Downsample')
+#     else:
+#         print('Model unavailable')
+
+#     # plot precision-recall curve for baselines, optional
+#     try:
+#         for baseline_result_folder, baseline_name, plot_style in zip([cfg.POINTNETVLAD_RESULT_FOLDER, \
+#                                                                       cfg.SCANCONTEXT_RESULT_FOLDER, \
+#                                                                       cfg.M2DP_RESULT_FOLDER \
+#                                                                      ], 
+#                                                                       ['PointNetVLAD', 'Scan Context', 'M2DP'],
+#                                                                       ['k--', 'm-.', 'g:']):
+
+#             precision_baseline = np.load(os.path.join(baseline_result_folder, 'precision.npy'))
+#             recall_baseline = np.load(os.path.join(baseline_result_folder, 'recall.npy'))
+#             plt.plot(recall_baseline, precision_baseline, plot_style, label=baseline_name)
+#     except:
+#         print('error plotting baselines curve')
+    
+#     plt.title("Precision-recall Curve")
+#     plt.xlabel('Recall')
+#     plt.ylabel('Precision')
+#     plt.xlim(0,1.1)
+#     plt.ylim(0,1.1)
+#     plt.legend(loc='lower right')
+#     plt.tight_layout()
+#     plt.savefig(os.path.join(cfg.RESULTS_FOLDER, "precision_recall_oxford.png"))
+#     print('Precision-recall curve is saved at:', os.path.join(cfg.RESULTS_FOLDER, "precision_recall_oxford.png"))
+
+
 
 def train(epoch):
     epoch_loss = 0
@@ -110,11 +195,18 @@ def train(epoch):
         print('Cached:', torch.cuda.memory_cached())
 
         model.train()
+        # print("startIter_type: ", type(startIter))
+        # print("startIter ", startIter)
+
+        # print("training_data_loader_type: ", type(training_data_loader))
+        # print("training_data_loader ", training_data_loader)
+
         for iteration, (query, positives, negatives, 
                 negCounts, indices) in enumerate(training_data_loader, startIter):
             # some reshaping to put query, pos, negs in a single (N, 3, H, W) tensor
             # where N = batchSize * (nQuery + nPos + nNeg)
             if query is None: continue # in case we get an empty batch
+            # print("in for loop: ")
 
             B, C, H, W = query.shape
             nNeg = torch.sum(negCounts)
@@ -184,6 +276,7 @@ def test(eval_set, epoch=0, write_tboard=False):
         for iteration, (input, indices) in enumerate(test_data_loader, 1):
             input = input.to(device)
             image_encoding = model.encoder(input)
+            print("image_encoding.shap: ", image_encoding.shape)
             vlad_encoding = model.pool(image_encoding) 
 
             dbFeat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy()
@@ -210,7 +303,7 @@ def test(eval_set, epoch=0, write_tboard=False):
     # for each query get those within threshold distance
     gt = eval_set.getPositives() 
 
-    correct_at_n = np.zeros(len(n_values))
+    correct_at_n = np.zeros(len(n_values)) # T_p
     #TODO can we do this on the matrix in one go?
     for qIx, pred in enumerate(predictions):
         for i,n in enumerate(n_values):
@@ -218,7 +311,7 @@ def test(eval_set, epoch=0, write_tboard=False):
             if np.any(np.in1d(pred[:n], gt[qIx])):
                 correct_at_n[i:] += 1
                 break
-    recall_at_n = correct_at_n / eval_set.dbStruct.numQ
+    recall_at_n = correct_at_n / eval_set.dbStruct.numQ # T_p + F_n
 
     recalls = {} #make dict for output
     for i,n in enumerate(n_values):
@@ -506,6 +599,7 @@ if __name__ == "__main__":
 
         not_improved = 0
         best_score = 0
+        recall_history = {}
         for epoch in range(opt.start_epoch+1, opt.nEpochs + 1):
             if opt.optim.upper() == 'SGD':
                 scheduler.step(epoch)
@@ -518,7 +612,7 @@ if __name__ == "__main__":
                     best_score = recalls[5]
                 else: 
                     not_improved += 1
-
+                recall_history[epoch] = recalls
                 save_checkpoint({
                         'epoch': epoch,
                         'state_dict': model.state_dict(),
@@ -526,6 +620,7 @@ if __name__ == "__main__":
                         'best_score': best_score,
                         'optimizer' : optimizer.state_dict(),
                         'parallel' : isParallel,
+                        'recall_history':recall_history,
                 }, is_best)
 
                 if opt.patience > 0 and not_improved > (opt.patience / opt.evalEvery):
@@ -534,3 +629,6 @@ if __name__ == "__main__":
 
         print("=> Best Recall@5: {:.4f}".format(best_score), flush=True)
         writer.close()
+
+
+    
