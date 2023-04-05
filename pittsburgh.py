@@ -11,6 +11,7 @@ from PIL import Image
 
 from sklearn.neighbors import NearestNeighbors
 import h5py
+import torch.nn.functional as F
 
 root_dir = '/home/wendyu/dataset/Pittsburgh250k'
 if not exists(root_dir):
@@ -119,8 +120,15 @@ class WholeDatasetFromStruct(data.Dataset):
         img = Image.open(self.images[index])
 
         if self.input_transform:
-            img = self.input_transform(img)
-
+            img = self.input_transform(img) # (3, 480, 640)
+        # img.thumbnail(40, 40, resample=Image.Resampling.BILINEAR)
+        # print("imag.shape: ", img.shape)
+        img = img.unsqueeze(0)
+        # img = F.interpolate(img, size = [48, 64], mode = 'bilinear')
+        img = F.interpolate(img, size = [160, 160], mode = 'bilinear')
+        img = img.squeeze(0)
+        # print("after_imag.shape: ", img.shape)
+        
         return img, index
 
     def __len__(self):
@@ -130,6 +138,7 @@ class WholeDatasetFromStruct(data.Dataset):
         # positives for evaluation are those within trivial threshold range
         #fit NN to find them, search by radius
         if  self.positives is None:
+   
             knn = NearestNeighbors(n_jobs=-1)
             knn.fit(self.dbStruct.utmDb)
 

@@ -28,6 +28,11 @@ import pdb
 import warnings
 warnings.filterwarnings("ignore")
 
+from sklearn.metrics import precision_recall_curve
+import matplotlib.pyplot as plt
+import matplotlib
+import os
+
 parser = argparse.ArgumentParser(description='pytorch-NetVlad')
 parser.add_argument('--mode', type=str, default='train', help='Mode', choices=['train', 'test', 'cluster'])
 parser.add_argument('--batchSize', type=int, default=4, 
@@ -74,85 +79,102 @@ parser.add_argument('--split', type=str, default='val', help='Data split to use 
         choices=['test', 'test250k', 'train', 'val'])
 parser.add_argument('--fromscratch', action='store_true', help='Train from scratch rather than using pretrained models')
 
-# def get_precision_recall_curve(QUERY_SETS, QUERY_VECTORS, DATABASE_VECTORS, opt, ave_one_percent_recall):
-
-#     y_true = []
-#     y_predicted = []
-
-#     for q in range(len(QUERY_SETS)):
-#         for d in range(len(QUERY_SETS)):
-#             if (q==d):
-#                 continue
-
-#             database_nbrs = KDTree(DATABASE_VECTORS[d])
-
-#             for i in range(len(QUERY_SETS[q])):
-#                 true_neighbors = QUERY_SETS[q][i][d]
-#                 if(len(true_neighbors)==0):
-#                     continue
-#                 distances, indices = database_nbrs.query(np.array([QUERY_VECTORS[q][i]]))
-#                 current_y_true = 0
-#                 current_y_predicted = 0
-#                 for j in range(len(indices[0])):
-#                     if indices[0][j] in true_neighbors:
-#                         # predicted neighbor is correct
-#                         current_y_true = 1
-#                     current_y_predicted_temp = np.dot(QUERY_VECTORS[q][i], DATABASE_VECTORS[d][indices[0][j]]) / \
-#                                                     (np.linalg.norm(QUERY_VECTORS[q][i]) * np.linalg.norm(DATABASE_VECTORS[d][indices[0][j]]))
-#                     # take prediction similarity that is the highest amoung neighbors
-#                     if current_y_predicted_temp > current_y_predicted:
-#                         current_y_predicted = current_y_predicted_temp
-#                 # loop or not
-#                 y_true.append(current_y_true)
-
-#                 # similarity
-#                 y_predicted.append(current_y_predicted)
-        
-#         np.set_printoptions(threshold=sys.maxsize)
-
-#         precision, recall, thresholds = precision_recall_curve(y_true, y_predicted)
-
-#         np.set_printoptions(threshold=1000)
-
-#         np.save(os.path.join(cfg.RESULTS_FOLDER, 'precision.npy'), np.array(precision))
-#         np.save(os.path.join(cfg.RESULTS_FOLDER, 'recall.npy'), np.array(recall))
-
-#     # Plot Precision-recall curve
-#     plt.figure()
-#     if cfg.EVAL_MODEL =='epn_netvlad':
-#         plt.plot(recall, precision, 'b', label='EPN-NetVLAD')
-#     elif cfg.EVAL_MODEL =='atten_epn_netvlad':
-#         plt.plot(recall, precision, 'b', label='EPN-NetVLAD Attentive Downsample')
-#     else:
-#         print('Model unavailable')
-
-#     # plot precision-recall curve for baselines, optional
-#     try:
-#         for baseline_result_folder, baseline_name, plot_style in zip([cfg.POINTNETVLAD_RESULT_FOLDER, \
-#                                                                       cfg.SCANCONTEXT_RESULT_FOLDER, \
-#                                                                       cfg.M2DP_RESULT_FOLDER \
-#                                                                      ], 
-#                                                                       ['PointNetVLAD', 'Scan Context', 'M2DP'],
-#                                                                       ['k--', 'm-.', 'g:']):
-
-#             precision_baseline = np.load(os.path.join(baseline_result_folder, 'precision.npy'))
-#             recall_baseline = np.load(os.path.join(baseline_result_folder, 'recall.npy'))
-#             plt.plot(recall_baseline, precision_baseline, plot_style, label=baseline_name)
-#     except:
-#         print('error plotting baselines curve')
     
-#     plt.title("Precision-recall Curve")
-#     plt.xlabel('Recall')
-#     plt.ylabel('Precision')
-#     plt.xlim(0,1.1)
-#     plt.ylim(0,1.1)
-#     plt.legend(loc='lower right')
-#     plt.tight_layout()
-#     plt.savefig(os.path.join(cfg.RESULTS_FOLDER, "precision_recall_oxford.png"))
-#     print('Precision-recall curve is saved at:', os.path.join(cfg.RESULTS_FOLDER, "precision_recall_oxford.png"))
+def get_precision_recall_curve(qFeat, dbFeat, predictions1, predictions5, predictions10, predictions, gt):
+    y_true = []
+    y_predicted = []
+    for qIx, pred in enumerate(predictions):
+        y_t = 0
+        y_p = 0
+        for i, p in enumerate(pred): # iterate the pred
+            # if in top N then also in top NN, where NN > N
+            if np.any(np.in1d(p, gt[qIx])):
+                y_t = 1
+            # similarity
+            y_p_temp = np.dot(qFeat[qIx], dbFeat[p]) / (np.linalg.norm(qFeat[qIx]) * np.linalg.norm(dbFeat[p]))
+            if y_p_temp > y_p:
+                y_p = y_p_temp 
+        # loop or not
+        y_true.append(y_t)
+        y_predicted.append(y_p)
+    precision, recall, thresholds = precision_recall_curve(y_true, y_predicted)
+
+    y_true = []
+    y_predicted = []
+    for qIx, pred in enumerate(predictions1):
+        y_t = 0
+        y_p = 0
+        for i, p in enumerate(pred): # iterate the pred
+            # if in top N then also in top NN, where NN > N
+            if np.any(np.in1d(p, gt[qIx])):
+                y_t = 1
+            # similarity
+            y_p_temp = np.dot(qFeat[qIx], dbFeat[p]) / (np.linalg.norm(qFeat[qIx]) * np.linalg.norm(dbFeat[p]))
+            if y_p_temp > y_p:
+                y_p = y_p_temp 
+        # loop or not
+        y_true.append(y_t)
+        y_predicted.append(y_p)
+    precision1, recall1, thresholds = precision_recall_curve(y_true, y_predicted)
+    y_true = []
+    y_predicted = []
+    for qIx, pred in enumerate(predictions5):
+        y_t = 0
+        y_p = 0
+        for i, p in enumerate(pred): # iterate the pred
+            # if in top N then also in top NN, where NN > N
+            if np.any(np.in1d(p, gt[qIx])):
+                y_t = 1
+            # similarity
+            y_p_temp = np.dot(qFeat[qIx], dbFeat[p]) / (np.linalg.norm(qFeat[qIx]) * np.linalg.norm(dbFeat[p]))
+            if y_p_temp > y_p:
+                y_p = y_p_temp 
+        # loop or not
+        y_true.append(y_t)
+        y_predicted.append(y_p)
+    precision5, recall5, thresholds = precision_recall_curve(y_true, y_predicted)
+
+    y_true = []
+    y_predicted = []
+    for qIx, pred in enumerate(predictions10):
+        y_t = 0
+        y_p = 0
+        for i, p in enumerate(pred): # iterate the pred
+            # if in top N then also in top NN, where NN > N
+            if np.any(np.in1d(p, gt[qIx])):
+                y_t = 1
+            # similarity
+            y_p_temp = np.dot(qFeat[qIx], dbFeat[p]) / (np.linalg.norm(qFeat[qIx]) * np.linalg.norm(dbFeat[p]))
+            if y_p_temp > y_p:
+                y_p = y_p_temp 
+        # loop or not
+        y_true.append(y_t)
+        y_predicted.append(y_p)
+    precision10, recall10, thresholds = precision_recall_curve(y_true, y_predicted)
 
 
 
+    # precision, recall, thresholds = precision_recall_curve(y_true, y_predicted)
+    # precision1, recall1, thresholds = precision_recall_curve(y_true, y_predicted)
+    # precision5, recall5, thresholds = precision_recall_curve(y_true, y_predicted)
+    # precision10, recall10, thresholds = precision_recall_curve(y_true, y_predicted)
+
+    # Plot Precision-recall curve
+    plt.figure()
+    plt.plot(recall, precision, 'b', label='top20')
+    plt.plot(recall10, precision10, 'y', label='top10')
+    plt.plot(recall5, precision5, 'g', label='top5')
+    plt.plot(recall1, precision1, 'r', label='top1')
+    plt.title("Precision-recall Curve")
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.xlim(0,1.1)
+    plt.ylim(0,1.1)
+    plt.legend(loc='lower right')
+    plt.tight_layout()
+    plt.savefig(os.path.join("/media/sdc1/wendyu/baseline/pytorch-NetVlad/checkpoint", "precision_recall_top" +"all"+".png"))
+    # print('Precision-recall curve is saved at:', os.path.join("/media/sdc1/wendyu/baseline/pytorch-NetVlad/checkpoint", "precision_recall_top" +str(pred.shape[0]) +".png"))
+    print('Precision-recall curve is saved at:', os.path.join("/media/sdc1/wendyu/baseline/pytorch-NetVlad/checkpoint", "precision_recall_top" + "all" +".png"))
 def train(epoch):
     epoch_loss = 0
     startIter = 1 # keep track of batch iter across subsets for logging
@@ -209,6 +231,7 @@ def train(epoch):
             # print("in for loop: ")
 
             B, C, H, W = query.shape
+            # TODO
             nNeg = torch.sum(negCounts)
             input = torch.cat([query, positives, negatives])
 
@@ -218,7 +241,7 @@ def train(epoch):
 
             vladQ, vladP, vladN = torch.split(vlad_encoding, [B, B, nNeg])
 
-            optimizer.zero_grad()
+            optimizer.zero_grad() # gradient set to 0
             
             # calculate loss for each Query, Positive, Negative triplet
             # due to potential difference in number of negatives have to 
@@ -276,7 +299,8 @@ def test(eval_set, epoch=0, write_tboard=False):
         for iteration, (input, indices) in enumerate(test_data_loader, 1):
             input = input.to(device)
             image_encoding = model.encoder(input)
-            print("image_encoding.shap: ", image_encoding.shape)
+            # print("model.encoder: ", model.encoder)
+            # print("image_encoding.shape: ", image_encoding.shape) (24, 512, 2, 2)
             vlad_encoding = model.pool(image_encoding) 
 
             dbFeat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy()
@@ -299,6 +323,9 @@ def test(eval_set, epoch=0, write_tboard=False):
     n_values = [1,5,10,20]
 
     _, predictions = faiss_index.search(qFeat, max(n_values)) 
+    _, predictions1 = faiss_index.search(qFeat, 1)
+    _, predictions5 = faiss_index.search(qFeat, 5) 
+    _, predictions10 = faiss_index.search(qFeat, 10)
 
     # for each query get those within threshold distance
     gt = eval_set.getPositives() 
@@ -306,25 +333,30 @@ def test(eval_set, epoch=0, write_tboard=False):
     correct_at_n = np.zeros(len(n_values)) # T_p
     #TODO can we do this on the matrix in one go?
     for qIx, pred in enumerate(predictions):
-        for i,n in enumerate(n_values):
+        for i,n in enumerate(n_values): # iterate the pred
             # if in top N then also in top NN, where NN > N
             if np.any(np.in1d(pred[:n], gt[qIx])):
                 correct_at_n[i:] += 1
                 break
-    recall_at_n = correct_at_n / eval_set.dbStruct.numQ # T_p + F_n
+    recall_at_n = correct_at_n / eval_set.dbStruct.numQ # averging
 
     recalls = {} #make dict for output
     for i,n in enumerate(n_values):
         recalls[n] = recall_at_n[i]
         print("====> Recall@{}: {:.4f}".format(n, recall_at_n[i]))
         if write_tboard: writer.add_scalar('Val/Recall@' + str(n), recall_at_n[i], epoch)
-
+    get_precision_recall_curve(qFeat, dbFeat, predictions1, predictions5, predictions10, predictions, gt)
     return recalls
 
 def get_clusters(cluster_set):
-    nDescriptors = 50000
-    nPerImage = 100
-    nIm = ceil(nDescriptors/nPerImage)
+    nDescriptors = 50000 #nexttime
+    #/25 = 2000
+    # nDescriptors = 6000 # total descriptors
+    # 50000 * 3/25
+    nPerImage = 100 #nexttime
+    # 4
+    # nPerImage = 12 # down sample to (48, 64) # number of descriptors per image
+    nIm = ceil(nDescriptors/nPerImage) # take 500 images
 
     sampler = SubsetRandomSampler(np.random.choice(len(cluster_set), nIm, replace=False))
     data_loader = DataLoader(dataset=cluster_set, 
@@ -346,11 +378,19 @@ def get_clusters(cluster_set):
 
             for iteration, (input, indices) in enumerate(data_loader, 1):
                 input = input.to(device)
-                image_descriptors = model.encoder(input).view(input.size(0), encoder_dim, -1).permute(0, 2, 1)
-
+                print("cluster_input.shape: ", input.shape) # (24, 3, 48, 64) dowsample to (48, 64) 
+                image_descriptors = model.encoder(input).view(input.size(0), encoder_dim, -1).permute(0, 2, 1) # encoder_dim = 512
+                # print("cluster_model.encoder: ", model.encoder)
+                # print("image_descriptors.shape: ", image_descriptors.shape) #(24, 1200, 512) # (batch size, final feature map resolution(sampling dimension), feature dim(channels)) # original
+                # set image_descriptor.size(1)=100
+                print("image_descriptors.shape: ", image_descriptors.shape)
+                # print("feature_dimention", image_descriptors())
                 batchix = (iteration-1)*opt.cacheBatchSize*nPerImage
                 for ix in range(image_descriptors.size(0)):
                     # sample different location for each image in batch
+                    # print("nPerImage: ", nPerImage) # 100
+                    print("image_descriptors.size(1): ", image_descriptors.size(1)) # 4 downsample to (40, 40)
+                    # 100, downsample to (160, 160)
                     sample = np.random.choice(image_descriptors.size(1), nPerImage, replace=False)
                     startix = batchix + ix*nPerImage
                     dbFeat[startix:startix+nPerImage, :] = image_descriptors[ix, sample, :].detach().cpu().numpy()
@@ -500,7 +540,7 @@ if __name__ == "__main__":
 
     if opt.mode.lower() != 'cluster':
         if opt.pooling.lower() == 'netvlad':
-            net_vlad = netvlad.NetVLAD(num_clusters=opt.num_clusters, dim=encoder_dim, vladv2=opt.vladv2)
+            net_vlad = netvlad.NetVLAD(num_clusters=opt.num_clusters, dim=encoder_dim, vladv2=opt.vladv2) # encoder_dim = 512
             if not opt.resume: 
                 if opt.mode.lower() == 'train':
                     initcache = join(opt.dataPath, 'centroids', opt.arch + '_' + train_set.dataset + '_' + str(opt.num_clusters) +'_desc_cen.hdf5')

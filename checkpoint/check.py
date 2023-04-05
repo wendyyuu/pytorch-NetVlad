@@ -11,11 +11,13 @@ import matplotlib.pyplot as plt
 #                         'recall_history':recall_history,
 
 
-checkpoint = torch.load('/media/sdc1/wendyu/ibrahimi/runs/Feb19_03-46-01_vgg16_netvlad/checkpoints/checkpoint.pth.tar')
+
+best_checkpoint = torch.load('/media/sdc1/wendyu/baseline/pytorch-NetVlad/Mar24_13-36-22_vgg16_netvlad/checkpoints/model_best.pth.tar')
 # model_best = torch.load('model_best.pth.tar')
 # for key in checkpoint['recalls']:
 #     # print("checkpoint's recalss = ", checkpoint['recalls'])
-#     print("checkpoint's epoch = ", checkpoint['epoch'])
+print("checkpoint's epoch = ", best_checkpoint['epoch'])
+print("model_best's recalls = ", best_checkpoint['recalls'])
 #     print("checkpoint's recall_history = ", checkpoint['recall_history'])
 #     # print("model_best's recalss = ", model_best['recalls'])
 #     # print("model_best's epoch = ", model_best['epoch'])
@@ -23,12 +25,20 @@ checkpoint = torch.load('/media/sdc1/wendyu/ibrahimi/runs/Feb19_03-46-01_vgg16_n
 # for key in checkpoint.keys():
 #     print(key)
 
+
+
+
+
+
+checkpoint = torch.load('/media/sdc1/wendyu/baseline/pytorch-NetVlad/Mar24_13-36-22_vgg16_netvlad/checkpoints/checkpoint.pth.tar')
 print("checkpoint's epoch = ", checkpoint['epoch'])
 print("checkpoint's recall_history = ", checkpoint['recall_history'])
 
 
 
-x1points = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+# x1points = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+x1points = list(range(1, checkpoint['epoch'] + 1))
+# x1points = [1, 2, 3, 4]
 
 y1points = []
 y2points = []

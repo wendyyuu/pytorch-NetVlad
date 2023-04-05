@@ -90,6 +90,7 @@ class WholeDatasetFromStruct(data.Dataset):
 
         self.positives = None
         self.distances = None
+        
 
     def __getitem__(self, index):
         img = Image.open(self.images[index])
