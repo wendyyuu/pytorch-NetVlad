@@ -4,6 +4,7 @@
 # ignore ALL files in ANY directory named temp
 
 vgg16_netvlad_checkpoint/
+vgg16_netvlad_checkpoint_PCA/
 Mar10_20-05-33_vgg16_netvlad/
 Mar15_22-45-19_vgg16_netvlad/
 Mar16_20-16-18_vgg16_netvlad/
@@ -11,3 +12,8 @@ Mar17_05-05-36_vgg16_netvlad/
 Mar22_00-42-44_vgg16_netvlad/
 Feb16_06-18-01_vgg16_netvlad/
 Mar24_13-36-22_vgg16_netvlad/
+Apr11_20-13-36_alexnet_netvlad/      
+Apr12_03-50-15_alexnet_netvlad/     
+Apr18_02-33-20_vgg16_netvlad/       
+Apr20_03-31-18_vgg16_netvlad/        
+Apr21_00-35-12_resnet_full_netvlad/
